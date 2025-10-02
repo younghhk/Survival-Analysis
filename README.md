@@ -256,7 +256,7 @@ This repository provides a reproducible example of how to generate **adjusted su
 
 
 
-##  Setup
+###  Setup
 
 Install R (≥ 4.0.0) and the following packages:
 
@@ -266,7 +266,7 @@ install.packages(c("survival", "survminer"))
 
 
 
-## Data Example
+### Data Example
 
 Your dataset should contain at least:
 
@@ -286,9 +286,9 @@ head(mydata)
 
 
 
-##  Code Example
+###  Code Example
 
-### 1. Fit the Cox Model
+#### 1. Fit the Cox Model
 
 ```r
 library(survival)
@@ -300,7 +300,7 @@ summary(cox_fit)
 ```
 
 
-### 2. Generate Adjusted Survival Estimates
+#### 2. Generate Adjusted Survival Estimates
 
 ```r
 # Survival curve for treatment A, age 65
@@ -315,7 +315,7 @@ ggsurvplot(cox_surv,
 
 
 
-### 3. Compare Two Groups
+#### 3. Compare Two Groups
 
 ```r
 # Survival estimates for treatment A vs B, both at age 65
@@ -335,9 +335,9 @@ ggsurvplot(cox_surv_groups,
 
 
 
-##  Quick Start with Built-in Data
+###  R Example
 
-You can test the workflow with R’s built-in `lung` dataset:
+
 
 ```r
 # Load dataset
@@ -355,7 +355,7 @@ ggsurvplot(survfit(cox_fit, newdata = data.frame(sex = 1, age = 60)),
 
 
 
-##  Interpretation
+###  Interpretation
 
 * **Curve meaning**: Probability of surviving past a given time, adjusted for covariates in the model.
 * **Confidence intervals**: Shaded bands represent estimation uncertainty.
@@ -366,7 +366,7 @@ ggsurvplot(survfit(cox_fit, newdata = data.frame(sex = 1, age = 60)),
 
 
 
-##  References
+###  References
 
 * Cox DR (1972). *Regression Models and Life-Tables*. Journal of the Royal Statistical Society, Series B, 34(2):187–220.
 * Therneau TM (2023). **A Package for Survival Analysis in R**. [CRAN survival package](https://cran.r-project.org/package=survival)
@@ -376,13 +376,23 @@ ggsurvplot(survfit(cox_fit, newdata = data.frame(sex = 1, age = 60)),
 <a id="survival-prediction-using-machine-learning"></a>
 # 3. Survival Prediction Using Machine Learning
 
-##  Examples with allogeneic hematopoietic cell transplantation (HCT):
+###  Examples with allogeneic hematopoietic cell transplantation (HCT):
 
 - **Model Performance (AUC Comparison):** [AUC.pdf](model_auc_comparison.pdf)  
 - **Survival Curves (Kaplan–Meier):** [KM.pdf](km_plots.pdf)  
 - **Risk Stratification (Random Survival Forests):** [Risk Stratification.pdf](rsf_risk_groups.pdf)  
 
-##  Resources
+###  Resources
 - [Random Survival Forests Overview](https://www.randomforestsrc.org/articles/survival.html)  
 
+### 🔒 Repository Access
+
+The **Survival Prediction Using Machine Learning** materials use examples derived from a restricted dataset and are available to **approved collaborators only**.
+
+Access requests may be directed to:
+
+**Grace Hong**  
+📧 [grace.hong@nih.gov](mailto:grace.hong@nih.gov)
+
+*(Please include your GitHub username and affiliation in your request.)*
 
