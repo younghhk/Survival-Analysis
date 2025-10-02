@@ -4,6 +4,7 @@
 
 - [1. Choosing the Time Scale and Handling Delayed Entry in Cox Models](#sec-time-scale-delayed-entry)
 - [2. Adjusted Survival Curve Estimation from the Cox Proportional Hazards Model](#sec-adjusted-survival)
+- [3. Survival Prediction Using Machine Learning](#survival-prediction-using-machine-learning)
 
 ---
 
@@ -370,5 +371,18 @@ ggsurvplot(survfit(cox_fit, newdata = data.frame(sex = 1, age = 60)),
 * Cox DR (1972). *Regression Models and Life-Tables*. Journal of the Royal Statistical Society, Series B, 34(2):187–220.
 * Therneau TM (2023). **A Package for Survival Analysis in R**. [CRAN survival package](https://cran.r-project.org/package=survival)
 * Kassambara A, Kosinski M, Biecek P (2023). **survminer: Drawing Survival Curves using 'ggplot2'**. [CRAN survminer package](https://cran.r-project.org/package=survminer)
+
+---
+<a id="survival-prediction-using-machine-learning"></a>
+# 3. Survival Prediction Using Machine Learning
+
+##  Examples with allogeneic hematopoietic cell transplantation (HCT):
+
+- **Model Performance (AUC Comparison):** [AUC.pdf](model_auc_comparison.pdf)  
+- **Survival Curves (Kaplan–Meier):** [KM.pdf](km_plots.pdf)  
+- **Risk Stratification (Random Survival Forests):** [Risk Stratification.pdf](rsf_risk_groups.pdf)  
+
+##  Resources
+- [Random Survival Forests Overview](https://www.randomforestsrc.org/articles/survival.html)  
 
 
