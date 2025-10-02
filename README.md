@@ -1,6 +1,6 @@
 <a id="top"></a>
 
-# 📚 Contents
+#  Contents
 
 - [1. Choosing the Time Scale and Handling Delayed Entry in Cox Models](#sec-time-scale-delayed-entry)
 - [2. Adjusted Survival Curve Estimation from the Cox Proportional Hazards Model](#sec-adjusted-survival)
