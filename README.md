@@ -1,6 +1,14 @@
 <a id="top"></a>
 
-#  Contents
+
+> 🧬 **For additional cancer research software and tools**, visit  
+> [NCI Cancer Research Software Repository](https://github.com/younghhk/NCI)
+
+
+---
+
+# 📘 Contents
+
 
 - [1. Choosing the Time Scale and Handling Delayed Entry in Cox Models](#sec-time-scale-delayed-entry)
 - [2. Adjusted Survival Curve Estimation from the Cox Proportional Hazards Model](#sec-adjusted-survival)
