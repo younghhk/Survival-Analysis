@@ -9,117 +9,86 @@
 ---
 
 <a id="sec-time-scale-delayed-entry"></a>
-# 1. Choosing the Time Scale and Handling Delayed Entry in Cox Models
+# ⏳ Choosing the Time Scale & Handling **Delayed Entry** (Left Truncation) in Cox Models
 
+**Contents**
+- **Demonstration** of how to correctly handle **delayed entry** (left truncation) in survival analysis.
+- **Hypothetical example** with fully reproducible R code.
+- **Modeling strategy**: practical steps, model choices, and diagnostics you can adapt to your own data.
 
-## Data Structure
+---
 
+## 1) Study Frame & Data Structure (Hypothetical)
 
 ### 📆 Calendar Timeline
-
-- **Registry start:** **2000**  
-  Cancer incidence recording begins.
-
-- **Cohort entry window:** **2010–2030**  
-  The analytic entry window (2010–2030) defines when individuals become eligible for inclusion—  
-  that is, when covariates are collected, or when a person first becomes observable for follow-up.
-
-- **Follow-up period:** **Entry date → 2050**  
-  Each participant is followed from their entry date (which may occur years after diagnosis) until death, loss to follow-up, or study end.
-
-- **Study end:** **2050**  
-  Individuals alive without the event by this date are censored at their 2050 status.
-
----
-
-### 👥 Inclusion Criteria
-
-- Individuals **alive and observable at any point between 2010 and 2030** are included,  
-  regardless of diagnosis year, as long as they survived long enough to enter the analytic window.
-
-> **Note:** This cohort design uses **delayed entry (left truncation)** — follow-up begins only once a participant becomes observable (their entry date), rather than at the registry start in 2000.  
-> This approach ensures that survival time is counted only when participants are under observation, avoiding **immortal time bias** — an artificial inflation of survival that occurs when unobserved years before entry are mistakenly included.
->
-> **Example — Immortal Time Bias**
->
-> A person is **diagnosed in 2008**, but your study begins observation in **2010**.  
-> If survival is measured from 2008, that person automatically appears to have survived at least **2 years**, because anyone who died before 2010 would never be observed.  
-> The period **2008–2010** becomes “**immortal time**” — time during which the person was guaranteed to survive simply to be included in the study.
+- **Registry start:** **2000** – cancer cases begin being recorded.
+- **Cohort entry window:** **2010–2030** – people become **observable/eligible** (e.g., recruited, baseline covariates recorded, or first linked).
+- **Follow-up:** **Entry date → 2050** – death or censoring observed.
 
 
-### Outcomes and Censoring
-- **Event of interest:** death from any cause (overall survival).  
-- **Censoring:** alive at 2050 or lost to follow-up.  
-- **Status variable:** `status = 1` for death from any cause, `status = 0` otherwise.
+### 👥 Inclusion (Who gets in?)
+- Individuals **alive and observable at any time between 2010 and 2030**, regardless of diagnosis year, **provided they survived to be observed**.
+  
+> **Why delayed entry matters (a.k.a. left truncation):**  
+> If someone was diagnosed in **2008** but you only begin observing them in **2012**, they must have survived until 2012 to appear in your data.  
+> Counting **2008–2012** as time-at-risk would add **“immortal time”** (time they had to survive to be included), biasing survival **upward**.  
+> **Solution:** Start their risk time at the **entry date** (2012), not the registry start.
 
-## ⏳ Choosing the Time Scale
-
-In survival analysis, the time scale defines how follow-up is measured.
-Two standard choices are time since diagnosis and attained age.
-
-## Option 1. Time Since Diagnosis (Time-on-Study)
-
-### Definition:
-Follow-up starts at the diagnosis date (t = 0), and time measures years survived after diagnosis.
-
-### Use when:
-
-The focus is on survival after diagnosis (e.g., 5-year survival).
-
-You want time measured relative to diagnosis, not absolute age.
-
-### Setup:
-```{r}
-start_time = max(0, years_between(entry_date, diag_date))
-stop_time  = years_between(event_date, diag_date)
-```
-
-### Interpretation:
-S(2) = probability of surviving beyond 2 years after diagnosis.
-age_at_dx (age at diagnosis) can be included as a baseline covariate.
-
-### Example model:
-
-```{r}
-fit <- coxph(Surv(t_start, t_stop, status) ~ age_at_dx + gene + other_covs, data = d)
-survfit(fit)
-```
-
-## Option 2. Attained Age (Age as Time Scale)
-
-### Definition:
-The analysis clock measures chronological age,
-where attained_age = age_at_diagnosis + time_since_diagnosis.
-
-### Use when:
-
-The interest is in how risk changes with age itself.
-
-You want survival expressed directly by age (e.g., “probability of surviving beyond age 70”).
-
-### Setup:
-```{r}
-start_age = max(age_at_entry, age_at_diagnosis)
-stop_age  = age_at_event
-```
-
-### Interpretation:
-The survival function S(age) gives the probability of remaining event-free up to and beyond a given age,
-conditional on being event-free at entry.
-
-### Example:
-
-S(40) = 0.85 → among participants who were event-free at entry and share the same covariates,
-85% are expected to survive beyond age 40.
+### Outcomes & Censoring (for this demo)
+- **Event of interest:** **death from any cause** (overall survival).
+- **Censoring:** alive at 2050 or lost to follow-up.
+- **Status variable:** `status = 1` (death), `status = 0` (censored).
 
 ---
 
-## References
+## 2) Two Valid Time Scales
 
-* Cox DR. 1972. Regression Models and Life-Tables. JRSS B 34:187–220.
-* Therneau TM, Grambsch PM. 2000. Modeling Survival Data: Extending the Cox Model. Springer.
-* Klein JP, Moeschberger ML. 2003. Survival Analysis: Techniques for Censored and Truncated Data. Springer.
+### Option A. **Time Since Diagnosis** (time-on-study)
+- **Definition:** Clock starts at **diagnosis** (`t = 0`), time measures **years after diagnosis**.
+- **Use when:** You want “**5-year survival** after diagnosis” or durations relative to diagnosis.
+- **Left truncation:** risk starts at the **later** of (0, time from diagnosis to entry).
 
+### Option B. **Attained Age** (age as time scale)
+- **Definition:** Clock is **chronological age**; `attained_age = age_at_diagnosis + time_since_diagnosis`.
+- **Use when:** Risk is primarily **age-driven** and you want survival **by age** (e.g., `S(70)`).
+- **Left truncation:** risk starts at the **later** of (age at entry, age at diagnosis).
+
+---
+
+## 3) Construct (start, stop] times with delayed entry
+
+- Time-since-diagnosis: t_start = max(0, entry - diagnosis), t_stop = event - diagnosis.
+
+- Attained age: age_start = max(age_at_entry, age_at_dx), age_stop = age_at_event.
+
+## 4) Fit Cox Models With Left Truncation
+
+### A) Time Since Diagnosis (time-on-study)
+
+
+```{r}
+fit_dx <- coxph(Surv(t_start, t_stop, status) ~ age_at_dx + X, data = d)
+summary(fit_dx)
+```
+
+ #### Interpretation:
+
+- `S(2)` from this model = probability of surviving >2 years after diagnosis for the specified covariate profile.
+- `age_at_dx` is a baseline covariate here (okay to include).
+
+### B) Attained Age (age as time scale)
+
+ When age is the time scale, the `Surv()` uses attained age at entry/exit
+ 
+```{r}
+fit_age <- coxph(Surv(age_start, age_stop, status) ~ X, data = d)
+summary(fit_age)
+```
+#### Interpretation:
+
+- `S(70)` = probability of being event-free at age 70, conditional on being event-free at one’s entry age.
+
+- Do not add a generic “age” covariate when age is the time axis.
 
 ---
 
