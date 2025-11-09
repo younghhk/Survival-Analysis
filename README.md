@@ -11,14 +11,74 @@
 <a id="sec-time-scale-delayed-entry"></a>
 # ⏳ Choosing the Time Scale & Handling **Delayed Entry** (Left Truncation) in Cox Models
 
-**Contents**
-- **Demonstration** of how to correctly handle **delayed entry** (left truncation) in survival analysis.
-- **Hypothetical example** with fully reproducible R code.
-- **Modeling strategy**: practical steps, model choices, and diagnostics you can adapt to your own data.
-
 ---
 
-## 1) Study Frame & Data Structure (Hypothetical)
+## 1) Why Left Truncation (Delayed Entry) Must Be Handled Explicitly
+
+In survival analysis, each subject *i* contributes information to the likelihood **only** for the period during which they are **actually under observation**.  
+If some participants enter the study late (e.g., due to recruitment between 2010–2030), their earlier, unobserved time cannot contribute valid risk time — otherwise, survival will be overestimated (**immortal time bias**).
+
+### Conceptual Framework
+
+Let:
+- **Tᵢ** — true event time for subject *i*  
+- **Lᵢ** — entry time (left truncation point)  
+- **Cᵢ** — censoring time  
+- Subject *i* is **observable only if** Tᵢ > Lᵢ  
+- Observed data: (Lᵢ, Tᵢ, δᵢ, Xᵢ), where   δᵢ = 1 if the event is observed, and 0 otherwise.
+  
+
+
+
+In the Cox model, each time an event occurs for subject *i*, we compare that subject’s covariates to all others who were **at risk** at that same moment.
+
+The **risk set** at the event time of subject *i* is:
+
+> **R(Tᵢ) = { j : Lⱼ < Tᵢ ≤ Tⱼ }**
+
+where:
+- **i** indexes the subject who experienced the event at time **Tᵢ**,  
+- **j** indexes *all* subjects who were still “under observation” at that moment —  
+  meaning they had already entered the study (**Lⱼ < Tᵢ**) and had not yet experienced the event or censoring (**Tⱼ ≥ Tᵢ**).  
+- **δᵢ = 1** if subject *i* experienced the event, and **0** if they were censored.
+
+
+
+The **Cox proportional hazards model** assumes:
+
+> λ(t | Xᵢ) = λ₀(t) × exp(Xᵢᵀβ)
+
+The **partial likelihood** is then:
+
+> L(β) = ∏ᵢ [ exp(Xᵢᵀβ) / Σⱼ∈R(Tᵢ) exp(Xⱼᵀβ) ]^δᵢ
+
+Each event time contributes one term:  
+- The **numerator** corresponds to the subject who actually experienced the event (*i*).  
+- The **denominator** sums the risk contributions of all subjects *j* who were **at risk** at that moment.
+
+
+If delayed entry is ignored, the risk set is incorrectly defined as:
+
+> **R(Tᵢ) = { j : Tⱼ ≥ Tᵢ }**
+
+This version includes people who **had not yet entered** the study by time **Tᵢ** (i.e., Lⱼ ≥ Tᵢ),  
+artificially inflating the denominator and biasing hazard estimates.
+
+By correctly using **R(Tᵢ) = { j : Lⱼ < Tᵢ ≤ Tⱼ }**,  
+we ensure that subjects contribute **only during the period they are actually observable**.  
+
+
+
+###  Model Implementation in R
+
+In `R`, left truncation is implemented using the `(start, stop]` form of `Surv()`:
+
+```r
+coxph(Surv(start_time, stop_time, status) ~ covariates, data = d)
+```
+
+---
+## 2) Study Frame & Data Structure (Hypothetical)
 
 ### 📆 Calendar Timeline
 - **Registry start:** **2000** – cancer cases begin being recorded.
@@ -41,7 +101,7 @@
 
 ---
 
-## 2) Two Valid Time Scales
+## 3) Two Valid Time Scales
 
 ### Option A. **Time Since Diagnosis** (time-on-study)
 - **Definition:** Clock starts at **diagnosis** (`t = 0`), time measures **years after diagnosis**.
@@ -55,13 +115,13 @@
 
 ---
 
-## 3) Construct (start, stop] times with delayed entry
+## 4) Construct (start, stop] times with delayed entry
 
 - Time-since-diagnosis: t_start = max(0, entry - diagnosis), t_stop = event - diagnosis.
 
 - Attained age: age_start = max(age_at_entry, age_at_dx), age_stop = age_at_event.
 
-## 4) Fit Cox Models With Left Truncation
+## 5) Fit Cox Models With Left Truncation
 
 ### A) Time Since Diagnosis (time-on-study)
 
@@ -71,7 +131,7 @@ fit_dx <- coxph(Surv(t_start, t_stop, status) ~ age_at_dx + X, data = d)
 summary(fit_dx)
 ```
 
- #### Interpretation:
+**Interpretation**
 
 - `S(2)` from this model = probability of surviving >2 years after diagnosis for the specified covariate profile.
 - `age_at_dx` is a baseline covariate here (okay to include).
@@ -84,11 +144,13 @@ summary(fit_dx)
 fit_age <- coxph(Surv(age_start, age_stop, status) ~ X, data = d)
 summary(fit_age)
 ```
-#### Interpretation:
+**Interpretation**
 
 - `S(70)` = probability of being event-free at age 70, conditional on being event-free at one’s entry age.
 
 - Do not add a generic “age” covariate when age is the time axis.
+
+
 
 ---
 
