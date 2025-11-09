@@ -12,232 +12,107 @@
 # 1. Choosing the Time Scale and Handling Delayed Entry in Cox Models
 
 
-## Study Setup and Data Structure
+## Data Structure
 
-### Calendar timeline
 
-- **Registry start:** 2000  
-  Incident cases begin to be recorded.
+### 📆 Calendar Timeline
+
+- **Registry start:** **2000**  
+  Cancer incidence recording begins.
 
 - **Cohort entry window:** **2010–2030**  
-  Individuals are eligible to **enter** the analytic cohort on their first qualifying date within this window (e.g., recruitment/sampling date when covariates are recorded).
+  The analytic entry window (2010–2030) defines when individuals become eligible for inclusion—  
+  that is, when covariates are collected, or when a person first becomes observable for follow-up.
 
-- **Follow-up period:** entry date (between 2010–2030) through **2050**  
-  Events and censoring are recorded through 2050.
+- **Follow-up period:** **Entry date → 2050**  
+  Each participant is followed from their entry date (which may occur years after diagnosis) until death, loss to follow-up, or study end.
 
-- **Study end:** 2050  
-  Anyone without the event by this date is censored at their status in 2050.
-
-### Who is included
-
-- People who are alive and eligible **at their entry date between 2010 and 2030**, plus individuals diagnosed after 2010 who enter when they are first observed within the entry window.  
-- People who were diagnosed before 2010 but **died before their potential entry date** (i.e., before 2010) are not in the analytic cohort.  
-- Individuals diagnosed **after 2030** (and thus not observed within the 2010–2030 entry window) are **not** part of the cohort.
-
-This is handled with **delayed entry (left truncation)** so that risk time begins only when a person is actually observable (their entry date) and, for post-diagnosis outcomes, after diagnosis.
-
-### Outcomes and censoring
-
-- **Event of interest:** disease-specific death (replace with your exact endpoint if different).  
-- **Censoring:** alive at 2050, competing-cause death, or lost to follow-up.  
-- **Status variable:** `status = 1` for the event of interest, `status = 0` otherwise.
-
-### Two valid analysis choices for the time axis
-
-1) **Time since diagnosis**  
-   - The analysis time measures years since each person’s diagnosis.  
-   - Useful for questions like “survival *t* years after diagnosis.”  
-   - To report survival by *attained age*, you must also specify age at diagnosis and convert: `age = age_at_dx + t`.
-
-2) **Attained age**  
-   - The analysis time is chronological age.  
-   - Useful for questions like “survival at a given age (20, 30, 40…).”  
-   - Values like `S(30)` can be read directly at age 30.
-
-Both choices require **delayed entry between 2010 and 2030** so each subject contributes person-time only after they actually enter observation, and (for post-diagnosis outcomes) only after diagnosis has occurred.
-
-
-
-### How delayed entry works in this setup
-
-A person contributes risk only after both conditions hold:
-1) the person has been **diagnosed**, and  
-2) the person is **observable** within the analytic **entry window (2010–2030)**.
-
-- On the **time-since-diagnosis** scale:  
-  `start_time = max(0, years_between(entry_date, diag_date))`  
-  `stop_time  = years_between(event_date, diag_date)`
-
-- On the **attained-age** scale:  
-  `start_age = max(age_at_entry, age_at_dx)`  
-  `stop_age  = age_at_event`
-
-### Examples
-
-- **Diagnosed 2008 at age 55; enters 2012 (age 59); dies 2016 (age 63)**  
-  - Time since diagnosis: `start = 4` (2012−2008), `stop = 8` (2016−2008), `status = 1`  
-  - Attained age: `start = 59`, `stop = 63`, `status = 1`
-
-- **Diagnosed 2029 at age 62; enters 2029 (age 62); alive in 2050 (age 83)**  
-  - Time since diagnosis: `start = 0`, `stop = 21`, `status = 0`  
-  - Attained age: `start = 62`, `stop = 83`, `status = 0`
-
-- **Diagnosed 1999 at age 45; died 2009 at age 55**  
-  - Not in cohort: death occurred before any possible entry in 2010–2030.
-
-- **Diagnosed 2032 at age 50; first observed 2032**  
-  - Not in cohort: diagnosis/observation occurs **after** the entry window (post-2030).
-
-### Why this setup matters
-
-- Using delayed entry aligned to **each subject’s entry date (2010–2030)** matches what was truly observed and prevents immortal time bias.  
-- Choosing the time axis that matches your estimand makes interpretation straightforward:
-  - **Time since diagnosis** answers “how long after diagnosis.”  
-  - **Attained age** answers “at what age.”
-
-
-
-
-
-## Case A. Time since diagnosis as the time scale
-
-**What the clock measures**  
-- t = 0 at each subject’s diagnosis.  
-- Event time is years since diagnosis until death or censoring.
-
-**Can age at diagnosis be a covariate here?**  
-- Yes. Age at diagnosis (a0) is a baseline characteristic, not the time axis.  
-- If age at diagnosis affects hazard, include it in the model or use strata.
-
-**How to read survival**  
-- `S(2)` means the probability of surviving more than 2 years after diagnosis.  
-- Survival can differ by age at diagnosis if you include it in the model.
-
-**Delayed entry in 2010 on the diagnosis scale**  
-- Entry time since diagnosis = (calendar 2010) − (calendar diagnosis date), truncated at 0.  
-- Example: diagnosed in 2008 → entry at t = 2. Diagnosed in 2012 → negative value, truncate to 0 (they enter at diagnosis).
-
-**R template**
-
-```r
-library(survival)
-
-# Variables (example):
-# diag_date: calendar date of diagnosis
-# entry_date: calendar date of analytic entry (commonly in 2010)
-# event_date: calendar date of event or censor
-# status: 1 = target-cause death, 0 = censor (alive or other-cause death)
-# gene: fixed covariate
-# age_at_dx: age at diagnosis (baseline covariate)
-
-to_years <- function(days) as.numeric(days) / 365.25
-
-d$t_start <- pmax(0, to_years(difftime(d$entry_date, d$diag_date, units = "days")))
-d$t_stop  <- to_years(difftime(d$event_date, d$diag_date, units = "days"))
-
-# Keep only subjects observed after entry
-d <- subset(d, t_stop > t_start)
-
-fit_A <- coxph(Surv(t_start, t_stop, status) ~ age_at_dx + gene + other_covs, data = d)
-summary(fit_A)
-
-# Model-based survival curves t years after diagnosis
-# For reporting at attained age a for someone with age_at_dx = a0:
-# evaluate S(t) at t = a - a0
-sf_A <- survfit(fit_A, newdata = data.frame(age_at_dx = 30, gene = 1, other_covs = ...))
-````
-
-**Reporting “by age 20, 30, 40” in Case A**
-
-* You must fix age at diagnosis.
-* Example: if a0 = 30, then age 40 corresponds to t = 10. Read S(10).
-* If you want to compare a0 = 20 vs 30 vs 40, plot separate curves by a0 or include a0 in the model and evaluate at chosen values.
+- **Study end:** **2050**  
+  Individuals alive without the event by this date are censored at their 2050 status.
 
 ---
 
-## Case B. Cox Models With Attained Age as the Time Scale
+### 👥 Inclusion Criteria
+
+- Individuals **alive and observable at any point between 2010 and 2030** are included,  
+  regardless of diagnosis year, as long as they survived long enough to enter the analytic window.
+
+> **Note:** This cohort design uses **delayed entry (left truncation)** — follow-up begins only once a participant becomes observable (their entry date), rather than at the registry start in 2000.  
+> This approach ensures that survival time is counted only when participants are under observation, avoiding **immortal time bias** — an artificial inflation of survival that occurs when unobserved years before entry are mistakenly included.
+>
+> **Example — Immortal Time Bias**
+>
+> A person is **diagnosed in 2008**, but your study begins observation in **2010**.  
+> If survival is measured from 2008, that person automatically appears to have survived at least **2 years**, because anyone who died before 2010 would never be observed.  
+> The period **2008–2010** becomes “**immortal time**” — time during which the person was guaranteed to survive simply to be included in the study.
 
 
-**When to use attained age**
+### Outcomes and Censoring
+- **Event of interest:** death from any cause (overall survival).  
+- **Censoring:** alive at 2050 or lost to follow-up.  
+- **Status variable:** `status = 1` for death from any cause, `status = 0` otherwise.
 
-Use attained age as the time scale when your scientific question is about the probability of being event-free **at a given age**. Examples:
-- Survival at age 20, 30, 40.
-- Comparing survival by genotype while controlling for current age through the time scale.
+## ⏳ Choosing the Time Scale
 
+In survival analysis, the time scale defines how follow-up is measured.
+Two standard choices are time since diagnosis and attained age.
 
+## Option 1. Time Since Diagnosis (Time-on-Study)
 
+### Definition:
+Follow-up starts at the diagnosis date (t = 0), and time measures years survived after diagnosis.
 
-**Delayed entry (left truncation) on the age scale**
+### Use when:
 
-Your analytic follow-up starts in 2010. Subjects contribute risk only **after** both of the following are true:
-1) They have been diagnosed.
-2) They are under observation beginning in 2010.
+The focus is on survival after diagnosis (e.g., 5-year survival).
 
-Therefore, the entry age for analysis is:
-```r
+You want time measured relative to diagnosis, not absolute age.
 
-start_age = max(age_at_2010, age_at_dx)
+### Setup:
+```{r}
+start_time = max(0, years_between(entry_date, diag_date))
+stop_time  = years_between(event_date, diag_date)
+```
 
-```r
-The exit age is:
-```r
+### Interpretation:
+S(2) = probability of surviving beyond 2 years after diagnosis.
+age_at_dx (age at diagnosis) can be included as a baseline covariate.
 
-stop_age = age_at_event
+### Example model:
 
-````
-A subject is at risk for ages in the interval `[start_age, stop_age)`.
+```{r}
+fit <- coxph(Surv(t_start, t_stop, status) ~ age_at_dx + gene + other_covs, data = d)
+survfit(fit)
+```
 
-**Examples**
-- Diagnosed in 2008 at age 55, age in 2010 is 57 → start_age = max(57, 55) = 57
-- Diagnosed in 2015 at age 62, age in 2010 is 57 → start_age = max(57, 62) = 62
-- Diagnosed in 1995 at age 40, age in 2010 is 55 → start_age = max(55, 40) = 55
+## Option 2. Attained Age (Age as Time Scale)
 
+### Definition:
+The analysis clock measures chronological age,
+where attained_age = age_at_diagnosis + time_since_diagnosis.
 
+### Use when:
 
-**Model specification in R**
+The interest is in how risk changes with age itself.
 
-```r
-library(survival)
+You want survival expressed directly by age (e.g., “probability of surviving beyond age 70”).
 
-# d must contain: age_at_dx, age_at_2010, age_at_event, status, gene, other covariates
+### Setup:
+```{r}
+start_age = max(age_at_entry, age_at_diagnosis)
+stop_age  = age_at_event
+```
 
-d$start_age <- pmax(d$age_at_2010, d$age_at_dx)
-d$stop_age  <- d$age_at_event
+### Interpretation:
+The survival function S(age) gives the probability of remaining event-free up to and beyond a given age,
+conditional on being event-free at entry.
 
-# Keep subjects with observed follow-up after entry
-d <- subset(d, stop_age > start_age)
+### Example:
 
-# Cox PH with attained age as the time scale
-fit_age <- coxph(Surv(start_age, stop_age, status) ~ gene + other_covs, data = d)
-summary(fit_age)
-
-# Model-based survival curve by attained age for a chosen covariate profile
-new_prof <- data.frame(gene = 1, other_covs = ...)
-sf_age <- survfit(fit_age, newdata = new_prof)
-
-# You can read survival at age 20, 30, 40, etc. directly from sf_age
-````
-
-Notes:
-
-* Since attained age is the time scale, do **not** include a generic “age” covariate. It would duplicate the role of the baseline hazard.
-* You may include **age at diagnosis** as a covariate if the scientific question is about earlier versus later diagnosis conditional on current age. Use with care because it is related to entry.
-
-
-
-**How to interpret**
-
-* The survival function (` S(a) `) represents the probability of being event-free **at age ( a )** for the specified covariate profile, **conditional on being event-free at the entry age** imposed by delayed entry.
-* Hazard ratios from `summary(fit_age)` compare instantaneous risk at the same attained age and covariates.
-
-Example interpretation:
-
-* If (` S(40) = 0.85` ) for a given profile, the model estimates that 85% are event-free at age 40 among those who were event-free when they entered observation and who have that covariate profile.
+S(40) = 0.85 → among participants who were event-free at entry and share the same covariates,
+85% are expected to survive beyond age 40.
 
 ---
-
-
-
 
 ## References
 
