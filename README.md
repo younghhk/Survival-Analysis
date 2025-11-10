@@ -159,6 +159,10 @@ summary(fit_age)
 - Do not add a generic “age” covariate when age is the time axis.
 
 
+## 🙏 Acknowledgments
+
+Special thanks to **Dr. Jung Kim** for bringing this interesting delayed-entry scenario to my attention.
+
 
 ---
 
