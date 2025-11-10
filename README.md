@@ -17,7 +17,7 @@
 ---
 
 <a id="sec-time-scale-delayed-entry"></a>
-#  Handling **Delayed Entry** (Left Truncation) in Cox Models
+# 1. Handling **Delayed Entry** (Left Truncation) in Cox Models
 
 ---
 
