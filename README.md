@@ -2,7 +2,7 @@
 
 
 > 🧬 **For additional cancer research software and tools**, visit  
-> [NCI Cancer Research Software Repository](https://github.com/younghhk/NCI)
+> [Cancer Research Software Repository](https://github.com/younghhk/NCI)
 
 
 ---
