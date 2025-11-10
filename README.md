@@ -10,14 +10,14 @@
 # 📘 Contents
 
 
-- [1. Handling Delayed Entry in Cox Models](#sec-time-scale-delayed-entry)
-- [2. Adjusted Survival Curve Estimation from the Cox Proportional Hazards Model](#sec-adjusted-survival)
-- [3. Survival Prediction Using Machine Learning](#survival-prediction-using-machine-learning)
+- [Handling Delayed Entry in Cox Models](#sec-time-scale-delayed-entry)
+- [Adjusted Survival Curve Estimation from the Cox Proportional Hazards Model](#sec-adjusted-survival)
+- [Survival Prediction Using Machine Learning](#survival-prediction-using-machine-learning)
 
 ---
 
 <a id="sec-time-scale-delayed-entry"></a>
-# 1. Handling **Delayed Entry** (Left Truncation) in Cox Models
+#  Handling **Delayed Entry** (Left Truncation) in Cox Models
 
 ---
 
@@ -159,15 +159,11 @@ summary(fit_age)
 - Do not add a generic “age” covariate when age is the time axis.
 
 
-## 🙏 Acknowledgments
-
-Special thanks to **Dr. Jung Kim** for bringing this interesting delayed-entry scenario to my attention.
-
 
 ---
 
 <a id="sec-adjusted-survival"></a>
-# 2. Adjusted Survival Curve Estimation from the Cox Proportional Hazards Model
+# Adjusted Survival Curve Estimation from the Cox Proportional Hazards Model
 
 
 This repository provides a reproducible example of how to generate **adjusted survival curves** from a **Cox proportional hazards model** in R. These curves resemble Kaplan–Meier plots but are model-based estimates that account for covariates. They are useful for visualizing survival probabilities while controlling for confounding factors.
@@ -292,7 +288,7 @@ ggsurvplot(survfit(cox_fit, newdata = data.frame(sex = 1, age = 60)),
 
 ---
 <a id="survival-prediction-using-machine-learning"></a>
-# 3. Survival Prediction Using Machine Learning
+# Survival Prediction Using Machine Learning
 
 ###  Examples with allogeneic hematopoietic cell transplantation (HCT):
 
